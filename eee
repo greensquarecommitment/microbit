@@ -1,0 +1,138 @@
+#include <U8g2lib.h>
+#include <SoftwareSerial.h>
+#include <DFRobotDFPlayerMini.h>
+
+#define OLED_RESET 4
+U8G2_SSD1306_128X64_NONAME_F_SW_I2C u8g2(U8G2_R0, /* clock=*/ SCL, /* data=*/ SDA, /* reset=*/ OLED_RESET);
+
+#define PLAY_PAUSE_BUTTON 2
+#define NEXT_BUTTON 3
+#define PREVIOUS_BUTTON 4
+
+SoftwareSerial mp3Serial(10, 11); // RX, TX
+DFRobotDFPlayerMini dfPlayer;
+
+bool isPlaying = false;
+
+// Icon arrays
+const unsigned char play_pause_bits_play[] PROGMEM = {
+  B00000000,
+  B00001000,
+  B00001100,
+  B00001110,
+  B00001100,
+  B00001000,
+  B00000000,
+  B00000000
+};
+
+const unsigned char play_pause_bits_pause[] PROGMEM = {
+  B00000000,
+  B00011000,
+  B00011000,
+  B00011000,
+  B00011000,
+  B00011000,
+  B00000000,
+  B00000000
+};
+
+const unsigned char previous_bits[] PROGMEM = {
+  B00000000,
+  B00011000,
+  B00011100,
+  B00011110,
+  B11111111,
+  B00011110,
+  B00011100,
+  B00011000
+};
+
+const unsigned char next_bits[] PROGMEM = {
+  B00000000,
+  B00011000,
+  B00011100,
+  B11111111,
+  B11111111,
+  B00011100,
+  B00011000,
+  B00000000
+};
+
+void setup() {
+  pinMode(PLAY_PAUSE_BUTTON, INPUT_PULLUP);
+  pinMode(NEXT_BUTTON, INPUT_PULLUP);
+  pinMode(PREVIOUS_BUTTON, INPUT_PULLUP);
+
+  Serial.begin(9600);
+  mp3Serial.begin(9600);
+
+  u8g2.begin();
+  u8g2.setFont(u8g2_font_ncenB08_tr);
+  u8g2.clearBuffer();
+
+  dfPlayer.begin(mp3Serial);
+  dfPlayer.setTimeOut(500); // Set serial communication timeout to 500ms
+
+  // Initialize the display
+  u8g2.clearBuffer();
+  u8g2.drawStr(0, 15, "Now Playing:");
+  // Display icons
+  u8g2.drawXBMP(25, 32, 8, 8, play_pause_bits_play); // Play/Pause icon
+  u8g2.drawXBMP(55, 32, 8, 8, previous_bits);   // Previous icon
+  u8g2.drawXBMP(95, 32, 8, 8, next_bits);       // Next icon
+  u8g2.sendBuffer();
+}
+
+void loop() {
+  if (digitalRead(PLAY_PAUSE_BUTTON) == LOW) {
+    if (!isPlaying) {
+      play();
+      isPlaying = true;
+      // Update play/pause button icon
+      u8g2.clearBuffer();
+      u8g2.drawStr(0, 15, "Now Playing:");
+      u8g2.drawXBMP(25, 32, 8, 8, play_pause_bits_pause); // Pause icon
+      u8g2.drawXBMP(55, 32, 8, 8, previous_bits);   // Previous icon
+      u8g2.drawXBMP(95, 32, 8, 8, next_bits);       // Next icon
+      u8g2.sendBuffer();
+    } else {
+      pause();
+      isPlaying = false;
+      // Update play/pause button icon
+      u8g2.clearBuffer();
+      u8g2.drawStr(0, 15, "Now Playing:");
+      u8g2.drawXBMP(25, 32, 8, 8, play_pause_bits_play); // Play icon
+      u8g2.drawXBMP(55, 32, 8, 8, previous_bits);   // Previous icon
+      u8g2.drawXBMP(95, 32, 8, 8, next_bits);       // Next icon
+      u8g2.sendBuffer();
+    }
+    delay(500);
+  }
+
+  if (digitalRead(NEXT_BUTTON) == LOW) {
+    nextTrack();
+    delay(500);
+  }
+
+  if (digitalRead(PREVIOUS_BUTTON) == LOW) {
+    previousTrack();
+    delay(500);
+  }
+}
+
+void play() {
+  dfPlayer.play();
+}
+
+void pause() {
+  dfPlayer.pause();
+}
+
+void nextTrack() {
+  dfPlayer.next();
+}
+
+void previousTrack() {
+  dfPlayer.previous();
+}
